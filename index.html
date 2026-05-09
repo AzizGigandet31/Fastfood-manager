@@ -894,23 +894,65 @@ function editChg(id){const c=charges.find(x=>x.id===id);openModal('✏️ Modifi
 // ══════════════════════════════════════════
 // EMPLOYÉS
 // ══════════════════════════════════════════
-let showAddEmp=false,newEmp={nom:'',poste:'',salaireService:''},expandedEmp=null,acompteTemp={};
+let showAddEmp=false,newEmp={nom:'',poste:'',salaireService:''},expandedEmp=null,acompteTemp={},semaineEmpActive=null;
 function cycleService(empId,jour){const e=employes.find(x=>x.id===empId);if(!e)return;if(!e.planning)e.planning={};const cur=e.planning[jour]||'repos';const next=cur==='repos'?'matin':cur==='matin'?'soir':cur==='soir'?'journee':'repos';e.planning[jour]=next;sauvegarder();renderEmployes();}
-function addPenalite(empId,type){const e=employes.find(x=>x.id===empId);if(!e)return;if(!e.penalites)e.penalites=[];e.penalites.push({id:uid(),type,montant:200,date:new Date().toLocaleDateString('fr-FR')});sauvegarder();renderEmployes();}
-function delPenalite(empId,penId){const e=employes.find(x=>x.id===empId);if(!e)return;e.penalites=(e.penalites||[]).filter(p=>p.id!==penId);sauvegarder();renderEmployes();}
-function addAcompte(empId,montant){const e=employes.find(x=>x.id===empId);if(!e||!montant)return;if(!e.acomptes)e.acomptes=[];e.acomptes.push({id:uid(),montant:+montant,date:new Date().toLocaleDateString('fr-FR')});sauvegarder();renderEmployes();}
-function delAcompte(empId,aId){const e=employes.find(x=>x.id===empId);if(!e)return;e.acomptes=(e.acomptes||[]).filter(a=>a.id!==aId);sauvegarder();renderEmployes();}
+function addPenalite(empId,type){
+  const e=employes.find(x=>x.id===empId);if(!e)return;
+  const sem=getSemaineEmp();
+  if(!e.historiquePen)e.historiquePen={};
+  if(!e.historiquePen[sem])e.historiquePen[sem]=[];
+  e.historiquePen[sem].push({id:uid(),type,montant:200,date:new Date().toLocaleDateString('fr-FR')});
+  sauvegarder();renderEmployes();
+}
+function delPenalite(empId,penId){
+  const e=employes.find(x=>x.id===empId);if(!e)return;
+  const sem=getSemaineEmp();
+  if(e.historiquePen&&e.historiquePen[sem])
+    e.historiquePen[sem]=e.historiquePen[sem].filter(p=>p.id!==penId);
+  sauvegarder();renderEmployes();
+}
+function addAcompte(empId,montant){
+  const e=employes.find(x=>x.id===empId);if(!e||!montant)return;
+  const sem=getSemaineEmp();
+  if(!e.historiqueAcp)e.historiqueAcp={};
+  if(!e.historiqueAcp[sem])e.historiqueAcp[sem]=[];
+  e.historiqueAcp[sem].push({id:uid(),montant:+montant,date:new Date().toLocaleDateString('fr-FR')});
+  sauvegarder();renderEmployes();
+}
+function delAcompte(empId,aId){
+  const e=employes.find(x=>x.id===empId);if(!e)return;
+  const sem=getSemaineEmp();
+  if(e.historiqueAcp&&e.historiqueAcp[sem])
+    e.historiqueAcp[sem]=e.historiqueAcp[sem].filter(a=>a.id!==aId);
+  sauvegarder();renderEmployes();
+}
 
 function renderEmployes(){
   const masseSal=employes.reduce((s,e)=>s+salaireEmp(e),0);
+  const semEmp = getSemaineEmp();
+  // Collect all semaines from all employees
+  const allSemEmp = new Set([semEmp]);
+  employes.forEach(e=>{
+    Object.keys(e.historiquePen||{}).forEach(s=>allSemEmp.add(s));
+    Object.keys(e.historiqueAcp||{}).forEach(s=>allSemEmp.add(s));
+  });
+  const semEmpList = Array.from(allSemEmp).sort().reverse();
+
   let h=`<div class="card" style="background:linear-gradient(135deg,#1a2e1a,#1c1f24);border-color:#22c55e30;margin-bottom:12px">
     <div class="row">
-      <div><div style="font-size:10px;color:#555;font-weight:700;letter-spacing:1px">MASSE SALARIALE SEMAINE</div><div style="font-size:22px;font-weight:900;color:#22c55e;margin-top:4px">${fc(masseSal)}</div></div>
+      <div>
+        <div style="font-size:10px;color:#555;font-weight:700;letter-spacing:1px">MASSE SALARIALE</div>
+        <div style="font-size:18px;font-weight:900;color:#22c55e;margin-top:4px">${fc(masseSal)}</div>
+        <div style="font-size:11px;color:#a78bfa;margin-top:2px;font-weight:700">${semEmp}</div>
+      </div>
       <div style="text-align:right"><div style="font-size:20px;font-weight:900;color:#555">${employes.length}</div><div style="font-size:10px;color:#555;font-weight:700">employé${employes.length>1?'s':''}</div></div>
     </div>
+    ${semEmpList.length>1?`<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
+      ${semEmpList.map(s=>`<button onclick="semaineEmpActive='${s}';renderEmployes()" style="background:${s===semEmp?'#22c55e':'#2a2d33'};color:${s===semEmp?'#fff':'#888'};border:none;border-radius:8px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">${s}</button>`).join('')}
+    </div>`:''}
   </div>`;
   employes.forEach(e=>{
-    const planning=e.planning||{},penalites=e.penalites||[],acomptes=e.acomptes||[];
+    const planning=e.planning||{},penalites=getPenalitesSemaine(e),acomptes=getAcomptesSemaine(e);
     const sal=salaireEmp(e);
     let srv=0;DAYS_EMP.forEach(d=>{const s=planning[d]||'repos';if(s==='matin'||s==='soir')srv+=1;else if(s==='journee')srv+=2;});
     const pen=penalites.reduce((s,p)=>s+Number(p.montant||200),0);
@@ -1079,7 +1121,7 @@ function renderRapport(){
     h+=`<div class="card"><div style="font-weight:900;margin-bottom:10px;font-size:13px">👥 Salaires semaine</div>`;
     employes.forEach(e=>{
       let srv=0;DAYS_EMP.forEach(d=>{const s=(e.planning||{})[d]||'repos';if(s==='matin'||s==='soir')srv+=1;else if(s==='journee')srv+=2;});
-      const acp=(e.acomptes||[]).reduce((s,a)=>s+Number(a.montant||0),0);
+      const acp=getAcomptesSemaine(e).reduce((s,a)=>s+Number(a.montant||0),0);
       h+=`<div class="fin-row"><div><div style="font-weight:700;font-size:12px">${e.nom}</div><div style="font-size:10px;color:#555">${e.poste} — ${srv} services${acp>0?' 💵 Acompte: '+fc(acp):''}</div></div><span style="color:#22c55e;font-weight:900;font-size:12px">${fc(salaireEmp(e))}</span></div>`;
     });
     h+=`<div class="row" style="padding-top:10px;font-weight:900"><span>Total</span><span style="color:#ef4444;font-size:15px">${fc(s.masseSal)}</span></div></div>`;
