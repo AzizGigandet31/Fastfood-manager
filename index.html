@@ -947,9 +947,7 @@ function renderEmployes(){
       </div>
       <div style="text-align:right"><div style="font-size:20px;font-weight:900;color:#555">${employes.length}</div><div style="font-size:10px;color:#555;font-weight:700">employé${employes.length>1?'s':''}</div></div>
     </div>
-    ${semEmpList.length>1?`<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
-      ${semEmpList.map(s=>`<button onclick="semaineEmpActive='${s}';renderEmployes()" style="background:${s===semEmp?'#22c55e':'#2a2d33'};color:${s===semEmp?'#fff':'#888'};border:none;border-radius:8px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">${s}</button>`).join('')}
-    </div>`:''}
+    ${semEmpList.length>1?`<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap" id="semEmpBtns"></div>`:''}
   </div>`;
   employes.forEach(e=>{
     const planning=e.planning||{},penalites=getPenalitesSemaine(e),acomptes=getAcomptesSemaine(e);
@@ -1012,6 +1010,17 @@ function renderEmployes(){
   }
   h+=`<button class="btn-outline" style="border-color:#22c55e;color:#22c55e" onclick="showAddEmp=true;renderEmployes()">+ Ajouter un employé</button>`;
   document.getElementById('page-employes').innerHTML=h;
+  // Populate semaine buttons
+  const btnContainer = document.getElementById('semEmpBtns');
+  if(btnContainer) {
+    semEmpList.forEach(s=>{
+      const btn = document.createElement('button');
+      btn.textContent = s;
+      btn.style.cssText = `background:${s===semEmp?'#22c55e':'#2a2d33'};color:${s===semEmp?'#fff':'#888'};border:none;border-radius:8px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit`;
+      btn.onclick = () => { semaineEmpActive = s; renderEmployes(); };
+      btnContainer.appendChild(btn);
+    });
+  }
 }
 function addEmp(){if(!newEmp.nom||!newEmp.salaireService)return;employes.push({id:uid(),nom:newEmp.nom,poste:newEmp.poste,salaireService:+newEmp.salaireService,planning:{},penalites:[],acomptes:[]});newEmp={nom:'',poste:'',salaireService:''};showAddEmp=false;sauvegarder();renderEmployes();}
 function delEmp(id){employes=employes.filter(e=>String(e.id)!==String(id));sauvegarder();renderEmployes();}
