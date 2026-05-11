@@ -541,10 +541,11 @@ function rCaisse() {
     h += '</div>';
     famProds.forEach(function(r){
       var vr = jourData[r.id]||{qte:0,total:0};
+      var autoTotal = (vr.qte||0) * (r.prix||0);
       h += '<div style="display:grid;grid-template-columns:1fr 65px 95px;gap:6px;padding:5px 0;border-bottom:1px solid #2a2d33;align-items:center">';
-      h += '<span style="font-size:12px;font-weight:600">'+r.nom+'</span>';
-      h += '<input type="number" placeholder="0" value="'+(vr.qte||'')+'" style="background:#111418;border:1px solid #2a2d33;border-radius:7px;padding:6px 4px;color:#f97316;font-size:13px;font-weight:800;text-align:center;font-family:inherit;width:100%" id="vqte_'+r.id+'"/>';
-      h += '<input type="number" placeholder="0" value="'+(vr.total||'')+'" style="background:#111418;border:1px solid #2a2d33;border-radius:7px;padding:6px 4px;color:#22c55e;font-size:12px;font-weight:800;text-align:right;font-family:inherit;width:100%" id="vtot_'+r.id+'"/>';
+      h += '<div><span style="font-size:12px;font-weight:600">'+r.nom+'</span><div style="font-size:10px;color:#555;margin-top:1px">'+fc(r.prix)+'/unité</div></div>';
+      h += '<input type="number" placeholder="0" value="'+(vr.qte||'')+'" style="background:#111418;border:1px solid #f9731640;border-radius:7px;padding:6px 4px;color:#f97316;font-size:14px;font-weight:900;text-align:center;font-family:inherit;width:100%" id="vqte_'+r.id+'"/>';
+      h += '<div style="text-align:right"><div style="color:#22c55e;font-size:13px;font-weight:900" id="vtotdisplay_'+r.id+'">'+(vr.qte>0?fc(autoTotal):'—')+'</div></div>';
       h += '</div>';
     });
     h += '</div>';
@@ -609,16 +610,30 @@ function rCaisse() {
   if(selectedFamille){
     recettes.filter(function(r){return r.cat===selectedFamille;}).forEach(function(r){
       var qi = document.getElementById('vqte_'+r.id);
-      var ti = document.getElementById('vtot_'+r.id);
+      var td = document.getElementById('vtotdisplay_'+r.id);
       var upd = function(){
-        var q = qi?+(qi.value)||0:0;
-        var t = ti?+(ti.value)||0:0;
-        if(q>0||t>0){ if(!vRapides[sem][jourActif])vRapides[sem][jourActif]={}; vRapides[sem][jourActif][r.id]={qte:q,total:t}; }
-        else { if(vRapides[sem]&&vRapides[sem][jourActif]) delete vRapides[sem][jourActif][r.id]; }
+        var q = qi ? (+(qi.value)||0) : 0;
+        var t = q * (r.prix||0); // Auto calculate total
+        if(q>0){
+          if(!vRapides[sem][jourActif]) vRapides[sem][jourActif]={};
+          vRapides[sem][jourActif][r.id] = {qte:q, total:t};
+          if(td) td.textContent = fc(t);
+        } else {
+          if(vRapides[sem]&&vRapides[sem][jourActif]) delete vRapides[sem][jourActif][r.id];
+          if(td) td.textContent = '—';
+        }
+        // Update day summary
+        var dayTot=0, dayQte=0;
+        CATS.forEach(function(cat){
+          recettes.filter(function(rr){return rr.cat===cat;}).forEach(function(rr){
+            var v=(vRapides[sem]&&vRapides[sem][jourActif])?vRapides[sem][jourActif][rr.id]||{}:{};
+            dayTot += v.total||0;
+            dayQte += v.qte||0;
+          });
+        });
         save();
       };
       if(qi) qi.oninput = upd;
-      if(ti) ti.oninput = upd;
     });
   }
   // Valider jour
