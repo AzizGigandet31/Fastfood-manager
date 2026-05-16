@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="fr">
 <head>
 <meta charset="UTF-8"/>
@@ -112,8 +111,8 @@ function load() {
 }
 
 // ══════ DATA ══════
-var DAYS_F = ["Sam","Dim","Lun","Mar","Mer","Jeu","Ven"];
-var DAYS_E = ["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"];
+var DAYS_F = ["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"]; // Fournisseurs: Dim → Sam
+var DAYS_E = ["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"]; // Employés: Dim → Sam
 var CATS   = ["Burger","Tacos","Poutine","Sandwich","Plat","Pizza","Salade","Boison"];
 var UNITES = ["kg","g","L","ml","unité","pièce"];
 
@@ -267,9 +266,16 @@ var fp  = function(v){ return (v||0).toFixed(1) + '%'; };
 
 function getSem() {
   var now = new Date();
-  var start = new Date(now.getFullYear(), 0, 1);
-  var week = Math.ceil(((now - start) / 86400000 + start.getDay() + 1) / 7);
-  return now.getFullYear() + '-S' + String(week).padStart(2,'0');
+  // Week starts Sunday (day 0), ends Saturday (day 6)
+  var day = now.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  // Get the Sunday of this week
+  var sunday = new Date(now);
+  sunday.setDate(now.getDate() - day);
+  sunday.setHours(0,0,0,0);
+  // Calculate week number from start of year
+  var startOfYear = new Date(sunday.getFullYear(), 0, 1);
+  var week = Math.ceil(((sunday - startOfYear) / 86400000 + 1) / 7);
+  return sunday.getFullYear() + '-S' + String(week).padStart(2,'0');
 }
 
 function ingPrixUnitaire(ing) {
@@ -453,7 +459,7 @@ function rDash() {
 }
 
 // ══════ CAISSE ══════
-var selectedFamille=null, jourActif='Sam';
+var selectedFamille=null, jourActif='Dim';
 var vRapides = {}; // {sem: {jour: {prodId: {qte, total}}}}
 function rCaisse() {
   var sem = getSem();
@@ -1408,6 +1414,5 @@ function rRapp(){
 // ══════ INIT ══════
 load();
 </script>
-
 </body>
 </html>
